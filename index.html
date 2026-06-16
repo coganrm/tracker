@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Troškovi</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #232323;
+    --border: rgba(255,255,255,0.08);
+    --text: #f0f0f0;
+    --text2: #888;
+    --text3: #555;
+    --accent: #e8c547;
+    --accent-dim: rgba(232,197,71,0.12);
+    --red: #e05a5a;
+    --green: #5acea0;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  header {
+    padding: 24px 20px 0;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  .month-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .month-nav button {
+    background: none;
+    border: none;
+    color: var(--text2);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 6px;
+    transition: color 0.15s, background 0.15s;
+  }
+
+  .month-nav button:hover { color: var(--text); background: var(--surface2); }
+
+  #monthLabel {
+    font-size: 14px;
+    color: var(--text2);
+    min-width: 80px;
+    text-align: center;
+  }
+
+  main {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+
+  .stat-value {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  .stat-value.accent { color: var(--accent); }
+  .stat-value.red { color: var(--red); }
+  .stat-value.green { color: var(--green); }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+
+  .card-title {
+    font-size: 12px;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 14px;
+  }
+
+  .chart-wrap {
+    position: relative;
+    height: 200px;
+  }
+
+  .cat-list {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .cat-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+  }
+
+  .cat-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .cat-name { flex: 1; color: var(--text2); }
+  .cat-amount { font-weight: 600; }
+  .cat-pct { color: var(--text3); font-size: 12px; min-width: 36px; text-align: right; }
+
+  .add-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .form-row.single { grid-template-columns: 1fr; }
+
+  input, select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 15px;
+    padding: 10px 12px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+  }
+
+  input:focus, select:focus {
+    border-color: var(--accent);
+  }
+
+  input::placeholder { color: var(--text3); }
+
+  select option { background: #1a1a1a; }
+
+  .btn-add {
+    width: 100%;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    font-weight: 700;
+    padding: 12px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    letter-spacing: 0.2px;
+  }
+
+  .btn-add:active { opacity: 0.8; }
+
+  .type-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .type-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text2);
+    font-size: 13px;
+    padding: 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+  }
+
+  .type-btn.active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .tx-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .tx-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .tx-item:last-child { border-bottom: none; }
+
+  .tx-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .tx-info { flex: 1; min-width: 0; }
+
+  .tx-merchant {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tx-meta {
+    font-size: 12px;
+    color: var(--text2);
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .tx-cat-badge {
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--surface2);
+    color: var(--text2);
+  }
+
+  .tx-amount {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--red);
+    flex-shrink: 0;
+  }
+
+  .tx-amount.income { color: var(--green); }
+
+  .tx-delete {
+    background: none;
+    border: none;
+    color: var(--text3);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    line-height: 1;
+    transition: color 0.15s;
+  }
+
+  .tx-delete:hover { color: var(--red); }
+
+  .empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text3);
+    font-size: 14px;
+  }
+
+  .empty-state .emoji { font-size: 32px; margin-bottom: 8px; }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .filter-row {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .filter-row::-webkit-scrollbar { display: none; }
+
+  .filter-chip {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text2);
+    font-size: 12px;
+    padding: 5px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .filter-chip.active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .shortcut-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+
+  .shortcut-box pre {
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    font-size: 12px;
+    color: var(--text2);
+    overflow-x: auto;
+    line-height: 1.6;
+    margin-top: 10px;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .shortcut-box .highlight { color: var(--accent); }
+
+  .tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: -4px;
+  }
+
+  .tab {
+    padding: 10px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+    background: none;
+  }
+
+  .tab.active {
+    background: var(--accent-dim);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: flex; flex-direction: column; gap: 16px; }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--green);
+    color: #000;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 20px;
+    transition: transform 0.3s ease;
+    z-index: 100;
+    white-space: nowrap;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  .budget-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+
+  .budget-row:last-child { border-bottom: none; }
+
+  .budget-bar-wrap {
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 2px;
+    margin-top: 4px;
+    overflow: hidden;
+  }
+
+  .budget-bar {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  .shortcut-url {
+    word-break: break-all;
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--accent);
+    background: var(--surface2);
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    margin-top: 10px;
+    display: block;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <h1>Troškovi</h1>
+    <div class="month-nav">
+      <button onclick="changeMonth(-1)">‹</button>
+      <span id="monthLabel"></span>
+      <button onclick="changeMonth(1)">›</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('pregled')">Pregled</button>
+    <button class="tab" onclick="switchTab('transakcije')">Transakcije</button>
+    <button class="tab" onclick="switchTab('shortcut')">Shortcut</button>
+  </div>
+
+  <div id="tab-pregled" class="tab-content active">
+    <div class="summary-grid">
+      <div class="stat-card">
+        <div class="stat-label">Ukupno potrošeno</div>
+        <div class="stat-value red" id="totalSpent">0 RSD</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Broj transakcija</div>
+        <div class="stat-value accent" id="totalCount">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Prosek po danu</div>
+        <div class="stat-value" id="avgPerDay">0 RSD</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Najveća stavka</div>
+        <div class="stat-value" id="maxTx">0 RSD</div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="card-title">Po kategoriji</div>
+      <div class="chart-wrap">
+        <canvas id="catChart" role="img" aria-label="Tortni grafikon troškova po kategoriji"></canvas>
+      </div>
+      <div class="cat-list" id="catList"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="card-title">Po danima u mesecu</div>
+      <div class="chart-wrap">
+        <canvas id="dayChart" role="img" aria-label="Troškovi po danima u mesecu"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-transakcije" class="tab-content">
+    <div class="add-card">
+      <div class="card-title">Dodaj trošak</div>
+      <div class="type-toggle">
+        <div class="type-btn active" id="typeCard" onclick="setType('card')">💳 Kartica</div>
+        <div class="type-btn" id="typeCash" onclick="setType('cash')">💵 Keš</div>
+      </div>
+      <div class="form-row">
+        <input type="number" id="inAmount" placeholder="Iznos (RSD)" inputmode="decimal" />
+        <input type="text" id="inMerchant" placeholder="Naziv mesta" />
+      </div>
+      <div class="form-row">
+        <select id="inCategory">
+          <option value="">Kategorija...</option>
+          <option value="Hrana">🥗 Hrana</option>
+          <option value="Gorivo">⛽ Gorivo</option>
+          <option value="Kafići">☕ Kafići / izlasci</option>
+          <option value="Prodavnica">🛒 Prodavnica</option>
+          <option value="Apple">🍎 Apple pretplate</option>
+          <option value="Kredit">🏦 Kredit</option>
+          <option value="Parking">🅿️ Parking</option>
+          <option value="Auto">🚗 Auto (reg/osig)</option>
+          <option value="Ostalo">📦 Ostalo</option>
+        </select>
+        <input type="date" id="inDate" />
+      </div>
+      <button class="btn-add" onclick="addTransaction()">Dodaj →</button>
+    </div>
+
+    <div>
+      <div class="section-header" style="margin-bottom: 10px;">
+        <div class="card-title" style="margin:0">Transakcije</div>
+      </div>
+      <div class="filter-row" id="filterRow"></div>
+    </div>
+
+    <div class="tx-list" id="txList"></div>
+  </div>
+
+  <div id="tab-shortcut" class="tab-content">
+    <div class="shortcut-box">
+      <div class="card-title">Shortcut za Apple Wallet</div>
+      <p style="font-size: 13px; color: var(--text2); line-height: 1.6;">
+        Napravi Shortcut koji se aktivira automatski kada stignje Wallet notifikacija. Shortcut treba da:
+      </p>
+      <pre><span class="highlight">1. Trigger:</span> "Automation" → "App" → izaberi "Wallet" → "Opens"
+
+<span class="highlight">2. Akcije u Shortcut-u:</span>
+
+• Get Contents of URL:
+  URL: <span class="highlight" id="apiUrl"></span>
+  Method: POST
+  Headers: Content-Type = application/json
+  Body (JSON):
+  {
+    "amount": [iznos iz notifikacije],
+    "merchant": [naziv iz notifikacije],
+    "date": [danas],
+    "type": "card"
+  }
+
+<span class="highlight">3. Parsiranje notifikacije (UniCredit IT):</span>
+
+Tekst notifikacije: "Pagamento 375 RSD Payspot"
+→ Koristi "Match Text" sa regex:
+   (\d[\d.,]+)\s*RSD
+→ Iznos je prva grupa
+
+Naziv: sve iza "RSD " do kraja</pre>
+
+      <p style="font-size: 13px; color: var(--text2); margin-top: 12px; line-height: 1.6;">
+        Nakon što Shortcut doda transakciju, otvori ovu stranicu i dodeli kategoriju ručno.
+      </p>
+    </div>
+
+    <div class="shortcut-box">
+      <div class="card-title">API endpoint za Shortcut</div>
+      <p style="font-size: 13px; color: var(--text2);">Pošalji POST request na:</p>
+      <span class="shortcut-url" id="apiUrl2"></span>
+      <p style="font-size: 13px; color: var(--text2); margin-top: 10px;">
+        Transakcija će biti dodata bez kategorije — otvoriš app i kategorizuješ.
+      </p>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'troskoviData_v2';
+const MONTHS_SR = ['Januar','Februar','Mart','April','Maj','Jun','Jul','Avgust','Septembar','Oktobar','Novembar','Decembar'];
+
+const CAT_COLORS = {
+  'Hrana':      '#5acea0',
+  'Gorivo':     '#e8c547',
+  'Kafići':     '#e07a5a',
+  'Prodavnica': '#7b8cde',
+  'Apple':      '#a8a8a8',
+  'Kredit':     '#e05a5a',
+  'Parking':    '#5ab4ce',
+  'Auto':       '#b07fe0',
+  'Ostalo':     '#888888',
+  '':           '#555555',
+};
+
+const CAT_EMOJI = {
+  'Hrana':'🥗','Gorivo':'⛽','Kafići':'☕','Prodavnica':'🛒',
+  'Apple':'🍎','Kredit':'🏦','Parking':'🅿️','Auto':'🚗','Ostalo':'📦','':'❓'
+};
+
+let data = [];
+let currentYear, currentMonth;
+let activeType = 'card';
+let activeFilter = 'sve';
+let catChart, dayChart;
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    data = raw ? JSON.parse(raw) : [];
+  } catch(e) { data = []; }
+}
+
+function saveData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function init() {
+  loadData();
+  const now = new Date();
+  currentYear = now.getFullYear();
+  currentMonth = now.getMonth();
+  setTodayDate();
+  setApiUrls();
+  render();
+}
+
+function setTodayDate() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('inDate').value = today;
+}
+
+function setApiUrls() {
+  const url = window.location.href.split('?')[0] + '?add=1';
+  document.getElementById('apiUrl').textContent = url;
+  document.getElementById('apiUrl2').textContent = url;
+}
+
+function changeMonth(dir) {
+  currentMonth += dir;
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  if (currentMonth < 0)  { currentMonth = 11; currentYear--; }
+  render();
+}
+
+function setType(t) {
+  activeType = t;
+  document.getElementById('typeCard').classList.toggle('active', t === 'card');
+  document.getElementById('typeCash').classList.toggle('active', t === 'cash');
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function addTransaction() {
+  const amount   = parseFloat(document.getElementById('inAmount').value);
+  const merchant = document.getElementById('inMerchant').value.trim();
+  const category = document.getElementById('inCategory').value;
+  const date     = document.getElementById('inDate').value;
+
+  if (!amount || amount <= 0) { showToast('Upiši iznos!'); return; }
+  if (!merchant) { showToast('Upiši naziv mesta!'); return; }
+  if (!date) { showToast('Izaberi datum!'); return; }
+
+  data.push({
+    id: Date.now(),
+    amount,
+    merchant,
+    category,
+    date,
+    type: activeType
+  });
+
+  saveData();
+
+  document.getElementById('inAmount').value = '';
+  document.getElementById('inMerchant').value = '';
+  document.getElementById('inCategory').value = '';
+  setTodayDate();
+
+  const d = new Date(date);
+  currentMonth = d.getMonth();
+  currentYear  = d.getFullYear();
+
+  showToast('Dodato ✓');
+  render();
+}
+
+function deleteTransaction(id) {
+  data = data.filter(t => t.id !== id);
+  saveData();
+  render();
+}
+
+function getMonthData() {
+  return data.filter(t => {
+    const d = new Date(t.date);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  });
+}
+
+function fmt(n) {
+  return Math.round(n).toLocaleString('sr-RS') + ' RSD';
+}
+
+function render() {
+  document.getElementById('monthLabel').textContent =
+    MONTHS_SR[currentMonth] + ' ' + currentYear;
+
+  const monthData = getMonthData();
+  renderStats(monthData);
+  renderCharts(monthData);
+  renderFilters(monthData);
+  renderTxList(monthData);
+}
+
+function renderStats(txs) {
+  const total = txs.reduce((s, t) => s + t.amount, 0);
+  const days  = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const max   = txs.length ? Math.max(...txs.map(t => t.amount)) : 0;
+
+  document.getElementById('totalSpent').textContent = fmt(total);
+  document.getElementById('totalCount').textContent = txs.length;
+  document.getElementById('avgPerDay').textContent  = fmt(total / days);
+  document.getElementById('maxTx').textContent      = fmt(max);
+}
+
+function renderCharts(txs) {
+  const catTotals = {};
+  txs.forEach(t => {
+    const c = t.category || 'Ostalo';
+    catTotals[c] = (catTotals[c] || 0) + t.amount;
+  });
+
+  const cats   = Object.keys(catTotals).sort((a,b) => catTotals[b] - catTotals[a]);
+  const vals   = cats.map(c => catTotals[c]);
+  const colors = cats.map(c => CAT_COLORS[c] || '#888');
+  const total  = vals.reduce((s,v) => s+v, 0);
+
+  if (catChart) catChart.destroy();
+  const ctx1 = document.getElementById('catChart').getContext('2d');
+  catChart = new Chart(ctx1, {
+    type: 'doughnut',
+    data: {
+      labels: cats,
+      datasets: [{
+        data: vals,
+        backgroundColor: colors,
+        borderWidth: 0,
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '68%',
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: {
+          label: ctx => ' ' + fmt(ctx.parsed)
+        }
+      }}
+    }
+  });
+
+  const catList = document.getElementById('catList');
+  if (cats.length === 0) {
+    catList.innerHTML = '<div style="font-size:13px;color:var(--text3);text-align:center;padding:8px 0">Nema podataka</div>';
+    return;
+  }
+  catList.innerHTML = cats.map(c => `
+    <div class="cat-row">
+      <div class="cat-dot" style="background:${CAT_COLORS[c]||'#888'}"></div>
+      <div class="cat-name">${CAT_EMOJI[c]||'📦'} ${c}</div>
+      <div class="cat-amount">${fmt(catTotals[c])}</div>
+      <div class="cat-pct">${total ? Math.round(catTotals[c]/total*100) : 0}%</div>
+    </div>
+  `).join('');
+
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const dayTotals = Array(daysInMonth).fill(0);
+  txs.forEach(t => {
+    const day = new Date(t.date).getDate() - 1;
+    if (day >= 0 && day < daysInMonth) dayTotals[day] += t.amount;
+  });
+
+  if (dayChart) dayChart.destroy();
+  const ctx2 = document.getElementById('dayChart').getContext('2d');
+  dayChart = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: Array.from({length: daysInMonth}, (_,i) => i+1),
+      datasets: [{
+        data: dayTotals,
+        backgroundColor: 'rgba(232,197,71,0.5)',
+        borderColor: '#e8c547',
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => ' ' + fmt(ctx.parsed.y) }
+      }},
+      scales: {
+        x: {
+          ticks: { color: '#555', font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        },
+        y: {
+          ticks: { color: '#555', font: { size: 10 }, callback: v => (v/1000)+'k' },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        }
+      }
+    }
+  });
+}
+
+function renderFilters(txs) {
+  const cats = ['sve', ...new Set(txs.map(t => t.category || 'Ostalo'))];
+  document.getElementById('filterRow').innerHTML = cats.map(c => `
+    <div class="filter-chip ${activeFilter === c ? 'active' : ''}" onclick="setFilter('${c}')">
+      ${c === 'sve' ? 'Sve' : (CAT_EMOJI[c]||'📦') + ' ' + c}
+    </div>
+  `).join('');
+}
+
+function setFilter(cat) {
+  activeFilter = cat;
+  const monthData = getMonthData();
+  renderFilters(monthData);
+  renderTxList(monthData);
+}
+
+function renderTxList(txs) {
+  let filtered = activeFilter === 'sve'
+    ? txs
+    : txs.filter(t => (t.category || 'Ostalo') === activeFilter);
+
+  filtered = [...filtered].sort((a,b) => new Date(b.date) - new Date(a.date));
+
+  const el = document.getElementById('txList');
+
+  if (filtered.length === 0) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="emoji">📭</div>
+      Nema transakcija za ovaj mesec
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = filtered.map(t => {
+    const cat = t.category || '';
+    const color = CAT_COLORS[cat] || '#888';
+    const emoji = CAT_EMOJI[cat] || '❓';
+    const d = new Date(t.date);
+    const dateStr = d.getDate() + '. ' + MONTHS_SR[d.getMonth()].slice(0,3);
+    return `
+      <div class="tx-item">
+        <div class="tx-icon" style="background:${color}22; color:${color}; font-size:17px">${emoji}</div>
+        <div class="tx-info">
+          <div class="tx-merchant">${t.merchant}</div>
+          <div class="tx-meta">
+            <span>${dateStr}</span>
+            <span>·</span>
+            <span class="tx-cat-badge">${cat || 'Nekategorisano'}</span>
+            <span>·</span>
+            <span>${t.type === 'card' ? '💳' : '💵'}</span>
+          </div>
+        </div>
+        <div class="tx-amount">${fmt(t.amount)}</div>
+        <button class="tx-delete" onclick="deleteTransaction(${t.id})" title="Obriši">×</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+init();
+</script>
+</body>
+</html>
