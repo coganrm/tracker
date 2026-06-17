@@ -597,7 +597,7 @@
 <div id="pinScreen" style="display:none; position:fixed; inset:0; background:#0f0f0f; z-index:998; align-items:center; justify-content:center; flex-direction:column; gap:16px; padding:20px;">
   <div style="font-size:40px;">🔒</div>
   <div id="pinTitle" style="color:#f0f0f0; font-size:16px; font-weight:600;">Unesi PIN</div>
-  <input type="password" id="pinInput" inputmode="numeric" maxlength="6" placeholder="••••" onkeydown="if(event.key==='Enter') submitPin()" style="background:#1a1a1a; border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:#f0f0f0; font-size:24px; text-align:center; padding:14px; width:160px; letter-spacing:8px;" />
+  <input type="password" id="pinInput" inputmode="numeric" maxlength="6" placeholder="••••••" autofocus autocomplete="off" onkeydown="if(event.key==='Enter') submitPin()" oninput="if(this.value.length===6) submitPin()" style="background:#1a1a1a; border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:#f0f0f0; font-size:24px; text-align:center; padding:14px; width:160px; letter-spacing:8px;" />
   <div id="pinError" style="color:#e05a5a; font-size:13px; height:16px;"></div>
   <button onclick="submitPin()" style="background:#e8c547; color:#000; border:none; border-radius:8px; font-size:15px; font-weight:700; padding:12px 32px; cursor:pointer;">Potvrdi</button>
 </div>
@@ -1036,7 +1036,7 @@ async function checkPin() {
   }
 
   pinScreen.style.display = 'flex';
-  pinInput.focus();
+  setTimeout(() => pinInput.focus(), 100);
 
   return new Promise((resolve) => {
     window.__pinResolve = resolve;
@@ -1045,11 +1045,15 @@ async function checkPin() {
 }
 
 async function submitPin() {
+  if (window.__pinSubmitting) return;
+  window.__pinSubmitting = true;
+
   const val = document.getElementById('pinInput').value.trim();
   const errEl = document.getElementById('pinError');
 
   if (!/^\d{4,6}$/.test(val)) {
     errEl.textContent = 'PIN mora biti 4-6 cifara';
+    window.__pinSubmitting = false;
     return;
   }
 
@@ -1064,10 +1068,12 @@ async function submitPin() {
       });
     } catch(e) {
       errEl.textContent = 'Greška pri čuvanju PIN-a, probaj ponovo';
+      window.__pinSubmitting = false;
       return;
     }
     document.getElementById('pinScreen').style.display = 'none';
     window.__pinResolve();
+    window.__pinSubmitting = false;
     return;
   }
 
@@ -1078,6 +1084,7 @@ async function submitPin() {
     errEl.textContent = 'Pogrešan PIN';
     document.getElementById('pinInput').value = '';
   }
+  window.__pinSubmitting = false;
 }
 async function init() {
   await checkPin();
