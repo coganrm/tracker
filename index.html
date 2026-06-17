@@ -585,7 +585,24 @@
 </head>
 <body>
 
-<header>
+<div id="loadingOverlay" style="display:none; position:fixed; inset:0; background:#0f0f0f; z-index:999; align-items:center; justify-content:center; flex-direction:column; gap:12px;">
+  <div style="width:32px; height:32px; border:3px solid #232323; border-top-color:#e8c547; border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+  <div style="color:#888; font-size:13px;">Učitavanje podataka...</div>
+</div>
+
+<style>
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<div id="pinScreen" style="display:none; position:fixed; inset:0; background:#0f0f0f; z-index:998; align-items:center; justify-content:center; flex-direction:column; gap:16px; padding:20px;">
+  <div style="font-size:40px;">🔒</div>
+  <div id="pinTitle" style="color:#f0f0f0; font-size:16px; font-weight:600;">Unesi PIN</div>
+  <input type="password" id="pinInput" inputmode="numeric" maxlength="6" placeholder="••••" onkeydown="if(event.key==='Enter') submitPin()" style="background:#1a1a1a; border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:#f0f0f0; font-size:24px; text-align:center; padding:14px; width:160px; letter-spacing:8px;" />
+  <div id="pinError" style="color:#e05a5a; font-size:13px; height:16px;"></div>
+  <button onclick="submitPin()" style="background:#e8c547; color:#000; border:none; border-radius:8px; font-size:15px; font-weight:700; padding:12px 32px; cursor:pointer;">Potvrdi</button>
+</div>
+
+<header id="appHeader" style="display:none">
   <div class="header-top">
     <h1>Troškovi</h1>
     <div class="month-nav">
@@ -596,7 +613,7 @@
   </div>
 </header>
 
-<main>
+<main id="mainContent" style="display:none">
   <div class="tabs">
     <button class="tab active" onclick="switchTab('pregled')">Pregled</button>
     <button class="tab" onclick="switchTab('transakcije')">Transakcije</button>
@@ -788,20 +805,47 @@ const DEPOSITS_KEY = 'goalDeposits_v1';
 let goalSettings = { target: 4000, kurs: 117 };
 let deposits = [];
 
-function loadGoalData() {
+async function loadGoalData() {
   try {
-    const g = localStorage.getItem(GOAL_KEY);
-    if (g) goalSettings = JSON.parse(g);
-  } catch(e) {}
+    const res = await fetch(FIREBASE_URL + '/goal.json');
+    const json = await res.json();
+    if (json) goalSettings = json;
+  } catch(e) {
+    console.error('Firebase goal load failed, using local fallback', e);
+    try {
+      const g = localStorage.getItem(GOAL_KEY);
+      if (g) goalSettings = JSON.parse(g);
+    } catch(e2) {}
+  }
   try {
-    const d = localStorage.getItem(DEPOSITS_KEY);
-    deposits = d ? JSON.parse(d) : [];
-  } catch(e) { deposits = []; }
+    const res2 = await fetch(FIREBASE_URL + '/deposits.json');
+    const json2 = await res2.json();
+    deposits = json2 || [];
+  } catch(e) {
+    try {
+      const d = localStorage.getItem(DEPOSITS_KEY);
+      deposits = d ? JSON.parse(d) : [];
+    } catch(e2) { deposits = []; }
+  }
 }
 
-function saveGoalData() {
+async function saveGoalData() {
   localStorage.setItem(GOAL_KEY, JSON.stringify(goalSettings));
   localStorage.setItem(DEPOSITS_KEY, JSON.stringify(deposits));
+  try {
+    await fetch(FIREBASE_URL + '/goal.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(goalSettings)
+    });
+    await fetch(FIREBASE_URL + '/deposits.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(deposits)
+    });
+  } catch(e) {
+    console.error('Firebase goal save failed', e);
+  }
 }
 
 function saveGoalSettings() {
@@ -908,26 +952,116 @@ function setTodayDateDeposit() {
   document.getElementById('depDate').value = new Date().toISOString().split('T')[0];
 }
 
+const FIREBASE_URL = 'https://troskovi-tracker-default-rtdb.europe-west1.firebasedatabase.app';
+const PIN_KEY = 'trackerPin_v1';
+
 let data = [];
 let currentYear, currentMonth;
 let activeType = 'card';
 let activeFilter = 'sve';
 let catChartInstance, dayChartInstance;
 
-function loadData() {
+async function loadData() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    data = raw ? JSON.parse(raw) : [];
-  } catch(e) { data = []; }
+    const res = await fetch(FIREBASE_URL + '/transactions.json');
+    const json = await res.json();
+    data = json || [];
+  } catch(e) {
+    console.error('Firebase load failed, using local fallback', e);
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      data = raw ? JSON.parse(raw) : [];
+    } catch(e2) { data = []; }
+  }
 }
 
-function saveData() {
+async function saveData() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  try {
+    await fetch(FIREBASE_URL + '/transactions.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+  } catch(e) {
+    console.error('Firebase save failed', e);
+  }
 }
 
-function init() {
-  loadData();
-  loadGoalData();
+async function simpleHash(str) {
+  const enc = new TextEncoder().encode(str);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function checkPin() {
+  let storedHash = null;
+  try {
+    const res = await fetch(FIREBASE_URL + '/pinHash.json');
+    storedHash = await res.json();
+  } catch(e) {
+    console.error('Could not reach Firebase for pin check', e);
+  }
+
+  const pinScreen = document.getElementById('pinScreen');
+  const pinTitle = document.getElementById('pinTitle');
+
+  if (!storedHash) {
+    pinTitle.textContent = 'Postavi novi PIN (4-6 cifara)';
+  } else {
+    pinTitle.textContent = 'Unesi PIN';
+  }
+
+  pinScreen.style.display = 'flex';
+  document.getElementById('pinInput').focus();
+
+  return new Promise((resolve) => {
+    window.__pinResolve = resolve;
+    window.__storedPinHash = storedHash;
+  });
+}
+
+async function submitPin() {
+  const val = document.getElementById('pinInput').value.trim();
+  const errEl = document.getElementById('pinError');
+
+  if (!/^\d{4,6}$/.test(val)) {
+    errEl.textContent = 'PIN mora biti 4-6 cifara';
+    return;
+  }
+
+  const hash = await simpleHash(val);
+
+  if (!window.__storedPinHash) {
+    try {
+      await fetch(FIREBASE_URL + '/pinHash.json', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(hash)
+      });
+    } catch(e) {
+      errEl.textContent = 'Greška pri čuvanju PIN-a, probaj ponovo';
+      return;
+    }
+    document.getElementById('pinScreen').style.display = 'none';
+    window.__pinResolve();
+    return;
+  }
+
+  if (hash === window.__storedPinHash) {
+    document.getElementById('pinScreen').style.display = 'none';
+    window.__pinResolve();
+  } else {
+    errEl.textContent = 'Pogrešan PIN';
+    document.getElementById('pinInput').value = '';
+  }
+}
+async function init() {
+  await checkPin();
+  document.getElementById('appHeader').style.display = '';
+  document.getElementById('mainContent').style.display = '';
+  showLoadingState();
+  await Promise.all([loadData(), loadGoalData()]);
   const now = new Date();
   currentYear = now.getFullYear();
   currentMonth = now.getMonth();
@@ -935,8 +1069,19 @@ function init() {
   setTodayDateDeposit();
   setApiUrls();
   handleIncomingParams();
+  hideLoadingState();
   render();
   renderGoal();
+}
+
+function showLoadingState() {
+  const el = document.getElementById('loadingOverlay');
+  if (el) el.style.display = 'flex';
+}
+
+function hideLoadingState() {
+  const el = document.getElementById('loadingOverlay');
+  if (el) el.style.display = 'none';
 }
 
 function setTodayDate() {
