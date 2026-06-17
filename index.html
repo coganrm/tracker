@@ -996,15 +996,38 @@ async function simpleHash(str) {
 
 async function checkPin() {
   let storedHash = null;
+  let fetchFailed = false;
+
   try {
     const res = await fetch(FIREBASE_URL + '/pinHash.json');
     storedHash = await res.json();
   } catch(e) {
     console.error('Could not reach Firebase for pin check', e);
+    fetchFailed = true;
   }
 
   const pinScreen = document.getElementById('pinScreen');
   const pinTitle = document.getElementById('pinTitle');
+  const pinError = document.getElementById('pinError');
+  const pinInput = document.getElementById('pinInput');
+
+  if (fetchFailed) {
+    pinTitle.textContent = 'Greška sa konekcijom';
+    pinError.textContent = 'Nema veze sa serverom. Provери internet i pokušaj ponovo.';
+    pinInput.style.display = 'none';
+    pinScreen.style.display = 'flex';
+    document.querySelector('#pinScreen button').textContent = 'Pokušaj ponovo';
+    document.querySelector('#pinScreen button').onclick = () => {
+      pinInput.style.display = '';
+      pinError.textContent = '';
+      document.querySelector('#pinScreen button').textContent = 'Potvrdi';
+      document.querySelector('#pinScreen button').onclick = submitPin;
+      checkPin().then(() => window.__pinResolve && window.__pinResolve());
+    };
+    return new Promise((resolve) => {
+      window.__pinResolve = resolve;
+    });
+  }
 
   if (!storedHash) {
     pinTitle.textContent = 'Postavi novi PIN (4-6 cifara)';
@@ -1013,7 +1036,7 @@ async function checkPin() {
   }
 
   pinScreen.style.display = 'flex';
-  document.getElementById('pinInput').focus();
+  pinInput.focus();
 
   return new Promise((resolve) => {
     window.__pinResolve = resolve;
