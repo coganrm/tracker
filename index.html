@@ -848,6 +848,11 @@
         <input type="number" id="goalTargetInput" placeholder="Cilj u EUR" value="4000" />
         <input type="number" id="goalKursInput" placeholder="Kurs RSD/EUR" value="117" />
       </div>
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; font-size:12px; color:var(--text2);">
+        <input type="checkbox" id="autoKursToggle" checked onchange="toggleAutoKurs()" style="width:auto;" />
+        <label for="autoKursToggle" style="flex:1">Automatski preuzmi NBS kurs svaki dan</label>
+      </div>
+      <div id="kursStatus" style="font-size:11px; color:var(--text3); margin-bottom:10px;"></div>
       <button class="btn-add" onclick="saveGoalSettings()" style="background:var(--surface2); color:var(--text); border:1px solid var(--border)">Sačuvaj podešavanja</button>
     </div>
 
@@ -871,7 +876,7 @@
       <div class="card-title">Dodaj pretplatu</div>
       <div class="form-row">
         <input type="text" id="subName" placeholder="Naziv (npr. Apple Music)" />
-        <input type="number" id="subAmount" placeholder="Iznos (RSD)" inputmode="decimal" />
+        <input type="number" id="subAmount" placeholder="Iznos (EUR)" inputmode="decimal" step="0.01" />
       </div>
       <div class="form-row">
         <select id="subCategory">
@@ -961,7 +966,7 @@ const CAT_EMOJI = {
 
 const GOAL_KEY = 'goalSettings_v1';
 const DEPOSITS_KEY = 'goalDeposits_v1';
-let goalSettings = { target: 4000, kurs: 117 };
+let goalSettings = { target: 4000, kurs: 117, autoKurs: true, kursDate: null };
 let deposits = [];
 
 async function loadGoalData() {
@@ -1011,10 +1016,47 @@ function saveGoalSettings() {
   const target = parseFloat(document.getElementById('goalTargetInput').value);
   const kurs = parseFloat(document.getElementById('goalKursInput').value);
   if (!target || !kurs) { showToast('Upiši ispravne vrednosti!'); return; }
-  goalSettings = { target, kurs };
+  const autoKurs = document.getElementById('autoKursToggle').checked;
+  goalSettings = { target, kurs, autoKurs, kursDate: goalSettings.kursDate };
   saveGoalData();
   showToast('Sačuvano ✓');
   renderGoal();
+}
+
+function toggleAutoKurs() {
+  const checked = document.getElementById('autoKursToggle').checked;
+  document.getElementById('goalKursInput').disabled = checked;
+  if (checked) {
+    fetchNbsKurs(true);
+  }
+}
+
+async function fetchNbsKurs(force) {
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  if (!force && goalSettings.kursDate === todayStr) {
+    return;
+  }
+
+  try {
+    const res = await fetch('https://kurs.resenje.org/api/v1/rates/today');
+    const json = await res.json();
+    const eurRate = json.rates.find(r => r.code === 'EUR');
+    if (eurRate && eurRate.exchange_middle) {
+      goalSettings.kurs = eurRate.exchange_middle;
+      goalSettings.kursDate = todayStr;
+      saveGoalData();
+      const input = document.getElementById('goalKursInput');
+      if (input) input.value = goalSettings.kurs.toFixed(4);
+      const statusEl = document.getElementById('kursStatus');
+      if (statusEl) statusEl.textContent = 'NBS srednji kurs (' + todayStr + '): ' + goalSettings.kurs.toFixed(4) + ' RSD/EUR';
+      renderGoal();
+    }
+  } catch(e) {
+    console.error('Could not fetch NBS kurs', e);
+    const statusEl = document.getElementById('kursStatus');
+    if (statusEl) statusEl.textContent = 'Nije moguće preuzeti kurs, koristi se poslednji sačuvan';
+  }
 }
 
 function addDeposit() {
@@ -1047,6 +1089,19 @@ function deleteDeposit(id) {
 function renderGoal() {
   document.getElementById('goalTargetInput').value = goalSettings.target;
   document.getElementById('goalKursInput').value = goalSettings.kurs;
+  document.getElementById('autoKursToggle').checked = goalSettings.autoKurs !== false;
+  document.getElementById('goalKursInput').disabled = goalSettings.autoKurs !== false;
+
+  const statusEl = document.getElementById('kursStatus');
+  if (statusEl) {
+    if (goalSettings.autoKurs !== false && goalSettings.kursDate) {
+      statusEl.textContent = 'NBS srednji kurs (' + goalSettings.kursDate + '): ' + goalSettings.kurs.toFixed(4) + ' RSD/EUR';
+    } else if (goalSettings.autoKurs !== false) {
+      statusEl.textContent = 'Preuzimanje kursa u toku...';
+    } else {
+      statusEl.textContent = 'Manuelni kurs';
+    }
+  }
 
   const totalEur = deposits.reduce((s, d) => s + d.amountEur, 0);
   const pct = Math.min(100, (totalEur / goalSettings.target) * 100);
@@ -1213,18 +1268,18 @@ function savePresets() {
 
 function addSubscription() {
   const name = document.getElementById('subName').value.trim();
-  const amount = parseFloat(document.getElementById('subAmount').value);
+  const amountEur = parseFloat(document.getElementById('subAmount').value);
   const category = document.getElementById('subCategory').value;
   const day = parseInt(document.getElementById('subDay').value);
 
   if (!name) { showToast('Upiši naziv!'); return; }
-  if (!amount || amount <= 0) { showToast('Upiši iznos!'); return; }
+  if (!amountEur || amountEur <= 0) { showToast('Upiši iznos!'); return; }
   if (!day || day < 1 || day > 31) { showToast('Upiši dan 1-31!'); return; }
 
   subscriptions.push({
     id: Date.now(),
     name,
-    amount,
+    amountEur,
     category,
     day,
     lastAdded: null
@@ -1261,9 +1316,10 @@ function processSubscriptions() {
 
     if (today.getDate() >= effectiveDay) {
       const txDate = new Date(today.getFullYear(), today.getMonth(), effectiveDay).toISOString().split('T')[0];
+      const amountRsd = Math.round(sub.amountEur * goalSettings.kurs);
       data.push({
         id: Date.now() + Math.random(),
-        amount: sub.amount,
+        amount: amountRsd,
         merchant: sub.name,
         category: sub.category,
         date: txDate,
@@ -1282,8 +1338,10 @@ function processSubscriptions() {
 }
 
 function renderSubscriptions() {
-  const totalMonthly = subscriptions.reduce((s, sub) => s + sub.amount, 0);
-  document.getElementById('subTotalMonthly').textContent = fmt(totalMonthly);
+  const totalMonthlyEur = subscriptions.reduce((s, sub) => s + sub.amountEur, 0);
+  const totalMonthlyRsd = totalMonthlyEur * goalSettings.kurs;
+  document.getElementById('subTotalMonthly').textContent =
+    totalMonthlyEur.toLocaleString('sr-RS', {maximumFractionDigits: 2}) + ' € (≈ ' + fmt(totalMonthlyRsd) + ')';
 
   const listEl = document.getElementById('subList');
   if (subscriptions.length === 0) {
@@ -1308,6 +1366,7 @@ function renderSubscriptions() {
       nextLabel = 'za ' + daysUntil + ' dana';
     }
     const dueSoon = daysUntil >= 0 && daysUntil <= 3;
+    const rsdEquiv = Math.round(sub.amountEur * goalSettings.kurs);
 
     return `
       <div class="sub-item">
@@ -1317,7 +1376,10 @@ function renderSubscriptions() {
           <div class="sub-meta">Svakog ${sub.day}. u mesecu · ${sub.category || 'Nekategorisano'}</div>
           <span class="sub-next-badge ${dueSoon ? 'due-soon' : ''}">${nextLabel}</span>
         </div>
-        <div class="sub-amount">${fmt(sub.amount)}</div>
+        <div style="text-align:right; flex-shrink:0;">
+          <div class="sub-amount">${sub.amountEur.toLocaleString('sr-RS', {maximumFractionDigits:2})} €</div>
+          <div style="font-size:11px; color:var(--text2);">≈ ${fmt(rsdEquiv)}</div>
+        </div>
         <button class="tx-delete" onclick="deleteSubscription(${sub.id})" title="Obriši">×</button>
       </div>
     `;
@@ -1429,6 +1491,9 @@ async function init() {
   showLoadingState();
   await Promise.all([loadData(), loadGoalData(), loadSubscriptions(), loadBudgets()]);
   loadPresets();
+  if (goalSettings.autoKurs !== false) {
+    await fetchNbsKurs(false);
+  }
   processSubscriptions();
   const now = new Date();
   currentYear = now.getFullYear();
