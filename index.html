@@ -393,7 +393,7 @@
 
   .tabs {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -402,14 +402,15 @@
   }
 
   .tab {
-    padding: 10px;
+    padding: 10px 4px;
     text-align: center;
-    font-size: 13px;
+    font-size: 11.5px;
     color: var(--text2);
     cursor: pointer;
     transition: all 0.15s;
     border: none;
     background: none;
+    white-space: nowrap;
   }
 
   .tab.active {
@@ -440,28 +441,130 @@
   .toast.show { transform: translateX(-50%) translateY(0); }
 
   .budget-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 0;
+    padding: 12px 0;
     border-bottom: 1px solid var(--border);
     font-size: 14px;
   }
 
   .budget-row:last-child { border-bottom: none; }
 
+  .budget-row-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .budget-row-name { font-weight: 600; font-size: 13px; }
+  .budget-row-amounts { font-size: 12px; color: var(--text2); }
+  .budget-row-amounts.over { color: var(--red); font-weight: 600; }
+
   .budget-bar-wrap {
-    height: 4px;
+    height: 6px;
     background: var(--surface2);
-    border-radius: 2px;
-    margin-top: 4px;
+    border-radius: 3px;
     overflow: hidden;
   }
 
   .budget-bar {
     height: 100%;
-    border-radius: 2px;
+    border-radius: 3px;
     transition: width 0.4s ease;
+  }
+
+  .budget-empty-input {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+  }
+
+  .budget-empty-input span {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text2);
+  }
+
+  .budget-empty-input input {
+    width: 90px;
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+
+  .preset-row {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+    scrollbar-width: none;
+  }
+
+  .preset-row::-webkit-scrollbar { display: none; }
+
+  .preset-chip {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text);
+    font-size: 12px;
+    padding: 7px 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+
+  .preset-chip:active { background: var(--accent-dim); border-color: var(--accent); }
+
+  .sub-item {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+
+  .sub-item:last-child { border-bottom: none; }
+
+  .sub-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+    background: var(--accent-dim);
+  }
+
+  .sub-info { flex: 1; min-width: 0; }
+  .sub-name { font-size: 14px; font-weight: 600; }
+  .sub-meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .sub-amount { font-size: 15px; font-weight: 700; flex-shrink: 0; }
+
+  .sub-next-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--surface2);
+    color: var(--text2);
+    margin-top: 4px;
+    display: inline-block;
+  }
+
+  .sub-next-badge.due-soon {
+    background: rgba(232,197,71,0.15);
+    color: var(--accent);
+  }
+
+  .trend-summary {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text2);
   }
 
   .shortcut-url {
@@ -617,6 +720,7 @@
   <div class="tabs">
     <button class="tab active" onclick="switchTab('pregled')">Pregled</button>
     <button class="tab" onclick="switchTab('transakcije')">Transakcije</button>
+    <button class="tab" onclick="switchTab('pretplate')">Pretplate</button>
     <button class="tab" onclick="switchTab('stednja')">Štednja</button>
     <button class="tab" onclick="switchTab('shortcut')">Shortcut</button>
   </div>
@@ -655,11 +759,30 @@
         <canvas id="dayChart" role="img" aria-label="Troškovi po danima u mesecu"></canvas>
       </div>
     </div>
+
+    <div class="chart-card">
+      <div class="card-title">Trend kroz mesece</div>
+      <div class="chart-wrap">
+        <canvas id="trendChart" role="img" aria-label="Trend troškova kroz poslednjih 6 meseci"></canvas>
+      </div>
+      <div class="trend-summary">
+        <span id="trendAvg">Prosek: —</span>
+        <span id="trendChange">—</span>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="section-header" style="margin-bottom: 12px;">
+        <div class="card-title" style="margin:0">Budžeti po kategoriji</div>
+      </div>
+      <div id="budgetList"></div>
+    </div>
   </div>
 
   <div id="tab-transakcije" class="tab-content">
     <div class="add-card">
       <div class="card-title">Dodaj trošak</div>
+      <div class="preset-row" id="presetRow"></div>
       <div class="type-toggle">
         <div class="type-btn active" id="typeCard" onclick="setType('card')">💳 Kartica</div>
         <div class="type-btn" id="typeCash" onclick="setType('cash')">💵 Keš</div>
@@ -740,6 +863,42 @@
     <div>
       <div class="card-title">Istorija uplata</div>
       <div class="deposit-list" id="depositList"></div>
+    </div>
+  </div>
+
+  <div id="tab-pretplate" class="tab-content">
+    <div class="add-card">
+      <div class="card-title">Dodaj pretplatu</div>
+      <div class="form-row">
+        <input type="text" id="subName" placeholder="Naziv (npr. Apple Music)" />
+        <input type="number" id="subAmount" placeholder="Iznos (RSD)" inputmode="decimal" />
+      </div>
+      <div class="form-row">
+        <select id="subCategory">
+          <option value="">Kategorija...</option>
+          <option value="Hrana">🥗 Hrana</option>
+          <option value="Gorivo">⛽ Gorivo</option>
+          <option value="Kafići">☕ Kafići / izlasci</option>
+          <option value="Prodavnica">🛒 Prodavnica</option>
+          <option value="Apple">🍎 Apple pretplate</option>
+          <option value="Kredit">🏦 Kredit</option>
+          <option value="Parking">🅿️ Parking</option>
+          <option value="Auto">🚗 Auto (reg/osig)</option>
+          <option value="Ostalo">📦 Ostalo</option>
+        </select>
+        <input type="number" id="subDay" placeholder="Dan u mesecu (1-31)" min="1" max="31" />
+      </div>
+      <button class="btn-add" onclick="addSubscription()">Dodaj pretplatu →</button>
+    </div>
+
+    <div>
+      <div class="card-title">Aktivne pretplate</div>
+      <div class="tx-list" id="subList"></div>
+    </div>
+
+    <div class="stat-card" style="text-align:center">
+      <div class="stat-label">Ukupno mesečno od pretplata</div>
+      <div class="stat-value accent" id="subTotalMonthly">0 RSD</div>
     </div>
   </div>
 
@@ -959,7 +1118,14 @@ let data = [];
 let currentYear, currentMonth;
 let activeType = 'card';
 let activeFilter = 'sve';
-let catChartInstance, dayChartInstance;
+let catChartInstance, dayChartInstance, trendChartInstance;
+let subscriptions = [];
+let budgets = {};
+const PRESETS_KEY = 'presets_v1';
+let presets = [
+  { label: 'Parking', amount: 500, merchant: 'Parking', category: 'Parking' },
+  { label: 'Gorivo', amount: 2000, merchant: 'Pumpa', category: 'Gorivo' }
+];
 
 async function loadData() {
   try {
@@ -986,6 +1152,176 @@ async function saveData() {
   } catch(e) {
     console.error('Firebase save failed', e);
   }
+}
+
+async function loadSubscriptions() {
+  try {
+    const res = await fetch(FIREBASE_URL + '/subscriptions.json');
+    const json = await res.json();
+    subscriptions = json || [];
+  } catch(e) {
+    console.error('Firebase subscriptions load failed', e);
+    subscriptions = [];
+  }
+}
+
+async function saveSubscriptions() {
+  try {
+    await fetch(FIREBASE_URL + '/subscriptions.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(subscriptions)
+    });
+  } catch(e) {
+    console.error('Firebase subscriptions save failed', e);
+  }
+}
+
+async function loadBudgets() {
+  try {
+    const res = await fetch(FIREBASE_URL + '/budgets.json');
+    const json = await res.json();
+    budgets = json || {};
+  } catch(e) {
+    console.error('Firebase budgets load failed', e);
+    budgets = {};
+  }
+}
+
+async function saveBudgets() {
+  try {
+    await fetch(FIREBASE_URL + '/budgets.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(budgets)
+    });
+  } catch(e) {
+    console.error('Firebase budgets save failed', e);
+  }
+}
+
+function loadPresets() {
+  try {
+    const raw = localStorage.getItem(PRESETS_KEY);
+    if (raw) presets = JSON.parse(raw);
+  } catch(e) {}
+}
+
+function savePresets() {
+  localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
+}
+
+function addSubscription() {
+  const name = document.getElementById('subName').value.trim();
+  const amount = parseFloat(document.getElementById('subAmount').value);
+  const category = document.getElementById('subCategory').value;
+  const day = parseInt(document.getElementById('subDay').value);
+
+  if (!name) { showToast('Upiši naziv!'); return; }
+  if (!amount || amount <= 0) { showToast('Upiši iznos!'); return; }
+  if (!day || day < 1 || day > 31) { showToast('Upiši dan 1-31!'); return; }
+
+  subscriptions.push({
+    id: Date.now(),
+    name,
+    amount,
+    category,
+    day,
+    lastAdded: null
+  });
+  saveSubscriptions();
+
+  document.getElementById('subName').value = '';
+  document.getElementById('subAmount').value = '';
+  document.getElementById('subCategory').value = '';
+  document.getElementById('subDay').value = '';
+
+  showToast('Pretplata dodata ✓');
+  renderSubscriptions();
+}
+
+function deleteSubscription(id) {
+  subscriptions = subscriptions.filter(s => s.id !== id);
+  saveSubscriptions();
+  renderSubscriptions();
+}
+
+function processSubscriptions() {
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  const currentMonthKey = todayStr.slice(0, 7);
+  let anyAdded = false;
+
+  subscriptions.forEach(sub => {
+    const lastAddedMonth = sub.lastAdded ? sub.lastAdded.slice(0, 7) : null;
+    if (lastAddedMonth === currentMonthKey) return;
+
+    const daysInCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const effectiveDay = Math.min(sub.day, daysInCurrentMonth);
+
+    if (today.getDate() >= effectiveDay) {
+      const txDate = new Date(today.getFullYear(), today.getMonth(), effectiveDay).toISOString().split('T')[0];
+      data.push({
+        id: Date.now() + Math.random(),
+        amount: sub.amount,
+        merchant: sub.name,
+        category: sub.category,
+        date: txDate,
+        type: 'card',
+        fromSubscription: true
+      });
+      sub.lastAdded = todayStr;
+      anyAdded = true;
+    }
+  });
+
+  if (anyAdded) {
+    saveData();
+    saveSubscriptions();
+  }
+}
+
+function renderSubscriptions() {
+  const totalMonthly = subscriptions.reduce((s, sub) => s + sub.amount, 0);
+  document.getElementById('subTotalMonthly').textContent = fmt(totalMonthly);
+
+  const listEl = document.getElementById('subList');
+  if (subscriptions.length === 0) {
+    listEl.innerHTML = `<div class="empty-state"><div class="emoji">🔁</div>Nema pretplata još</div>`;
+    return;
+  }
+
+  const today = new Date();
+  const sorted = [...subscriptions].sort((a,b) => a.day - b.day);
+
+  listEl.innerHTML = sorted.map(sub => {
+    const emoji = CAT_EMOJI[sub.category] || '🔁';
+    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const effectiveDay = Math.min(sub.day, daysInMonth);
+    let daysUntil = effectiveDay - today.getDate();
+    let nextLabel;
+    if (daysUntil < 0) {
+      nextLabel = 'sledeći mesec ' + sub.day + '.';
+    } else if (daysUntil === 0) {
+      nextLabel = 'danas';
+    } else {
+      nextLabel = 'za ' + daysUntil + ' dana';
+    }
+    const dueSoon = daysUntil >= 0 && daysUntil <= 3;
+
+    return `
+      <div class="sub-item">
+        <div class="sub-icon">${emoji}</div>
+        <div class="sub-info">
+          <div class="sub-name">${sub.name}</div>
+          <div class="sub-meta">Svakog ${sub.day}. u mesecu · ${sub.category || 'Nekategorisano'}</div>
+          <span class="sub-next-badge ${dueSoon ? 'due-soon' : ''}">${nextLabel}</span>
+        </div>
+        <div class="sub-amount">${fmt(sub.amount)}</div>
+        <button class="tx-delete" onclick="deleteSubscription(${sub.id})" title="Obriši">×</button>
+      </div>
+    `;
+  }).join('');
 }
 
 async function simpleHash(str) {
@@ -1091,7 +1427,9 @@ async function init() {
   document.getElementById('appHeader').style.display = '';
   document.getElementById('mainContent').style.display = '';
   showLoadingState();
-  await Promise.all([loadData(), loadGoalData()]);
+  await Promise.all([loadData(), loadGoalData(), loadSubscriptions(), loadBudgets()]);
+  loadPresets();
+  processSubscriptions();
   const now = new Date();
   currentYear = now.getFullYear();
   currentMonth = now.getMonth();
@@ -1102,6 +1440,7 @@ async function init() {
   hideLoadingState();
   render();
   renderGoal();
+  renderPresets();
 }
 
 function showLoadingState() {
@@ -1151,7 +1490,7 @@ function switchTabProgrammatic(name) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
-  const tabIndex = { pregled: 0, transakcije: 1, stednja: 2, shortcut: 3 };
+  const tabIndex = { pregled: 0, transakcije: 1, pretplate: 2, stednja: 3, shortcut: 4 };
   const tabs = document.querySelectorAll('.tab');
   if (tabs[tabIndex[name]]) tabs[tabIndex[name]].classList.add('active');
 }
@@ -1175,6 +1514,44 @@ function switchTab(name) {
   document.getElementById('tab-' + name).classList.add('active');
   event.target.classList.add('active');
   if (name === 'stednja') renderGoal();
+  if (name === 'pretplate') renderSubscriptions();
+}
+
+function renderPresets() {
+  const row = document.getElementById('presetRow');
+  if (!row) return;
+  row.innerHTML = presets.map((p, i) => `
+    <div class="preset-chip" onclick="applyPreset(${i})" oncontextmenu="event.preventDefault(); deletePreset(${i})">${p.label} · ${p.amount} RSD</div>
+  `).join('') + `<div class="preset-chip" onclick="saveCurrentAsPreset()" style="color:var(--accent)">+ Sačuvaj kao preset</div>`;
+}
+
+function deletePreset(index) {
+  presets.splice(index, 1);
+  savePresets();
+  renderPresets();
+  showToast('Preset obrisan');
+}
+
+function saveCurrentAsPreset() {
+  const amount = parseFloat(document.getElementById('inAmount').value);
+  const merchant = document.getElementById('inMerchant').value.trim();
+  const category = document.getElementById('inCategory').value;
+
+  if (!amount || !merchant) { showToast('Upiši iznos i naziv pre čuvanja preseta!'); return; }
+
+  presets.push({ label: merchant, amount, merchant, category });
+  savePresets();
+  renderPresets();
+  showToast('Preset sačuvan ✓');
+}
+
+function applyPreset(index) {
+  const p = presets[index];
+  if (!p) return;
+  document.getElementById('inAmount').value = p.amount;
+  document.getElementById('inMerchant').value = p.merchant;
+  document.getElementById('inCategory').value = p.category;
+  showToast('Popunjeno — provери i dodaj');
 }
 
 function addTransaction() {
@@ -1237,6 +1614,8 @@ function render() {
   renderCharts(monthData);
   renderFilters(monthData);
   renderTxList(monthData);
+  renderBudgets(monthData);
+  renderTrendChart();
 }
 
 function renderStats(txs) {
@@ -1341,6 +1720,143 @@ function renderCharts(txs) {
     }
   });
 }
+
+function renderTrendChart() {
+  const monthsBack = 6;
+  const labels = [];
+  const totals = [];
+
+  for (let i = monthsBack - 1; i >= 0; i--) {
+    const d = new Date(currentYear, currentMonth - i, 1);
+    const m = d.getMonth();
+    const y = d.getFullYear();
+    labels.push(MONTHS_SR[m].slice(0,3) + " '" + String(y).slice(2));
+
+    const monthTotal = data
+      .filter(t => {
+        const td = new Date(t.date);
+        return td.getMonth() === m && td.getFullYear() === y;
+      })
+      .reduce((s, t) => s + t.amount, 0);
+    totals.push(monthTotal);
+  }
+
+  const ctx = document.getElementById('trendChart');
+  if (!ctx) return;
+
+  if (trendChartInstance) trendChartInstance.destroy();
+  trendChartInstance = new Chart(ctx.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: totals,
+        borderColor: '#e8c547',
+        backgroundColor: 'rgba(232,197,71,0.1)',
+        fill: true,
+        tension: 0.3,
+        pointBackgroundColor: '#e8c547',
+        pointRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => ' ' + fmt(ctx.parsed.y) }
+      }},
+      scales: {
+        x: {
+          ticks: { color: '#555', font: { size: 10 } },
+          grid: { display: false }
+        },
+        y: {
+          ticks: { color: '#555', font: { size: 10 }, callback: v => (v/1000)+'k' },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        }
+      }
+    }
+  });
+
+  const validTotals = totals.filter(t => t > 0);
+  const avg = validTotals.length ? validTotals.reduce((s,t) => s+t, 0) / validTotals.length : 0;
+  document.getElementById('trendAvg').textContent = 'Prosek: ' + fmt(avg);
+
+  const changeEl = document.getElementById('trendChange');
+  if (totals.length >= 2 && totals[totals.length - 2] > 0) {
+    const last = totals[totals.length - 1];
+    const prev = totals[totals.length - 2];
+    const diff = ((last - prev) / prev) * 100;
+    const sign = diff >= 0 ? '+' : '';
+    changeEl.textContent = sign + Math.round(diff) + '% vs prošli mesec';
+    changeEl.style.color = diff > 0 ? 'var(--red)' : 'var(--green)';
+  } else {
+    changeEl.textContent = '';
+  }
+}
+
+function renderBudgets(txs) {
+  const catTotals = {};
+  txs.forEach(t => {
+    const c = t.category || 'Ostalo';
+    catTotals[c] = (catTotals[c] || 0) + t.amount;
+  });
+
+  const allCats = Object.keys(CAT_EMOJI).filter(c => c !== '');
+  const listEl = document.getElementById('budgetList');
+  if (!listEl) return;
+
+  const withBudget = allCats.filter(c => budgets[c] && budgets[c] > 0);
+  const withoutBudget = allCats.filter(c => !budgets[c] || budgets[c] <= 0);
+
+  let html = '';
+
+  withBudget.forEach(cat => {
+    const spent = catTotals[cat] || 0;
+    const budget = budgets[cat];
+    const pct = Math.min(100, (spent / budget) * 100);
+    const over = spent > budget;
+    const color = over ? 'var(--red)' : (pct > 80 ? 'var(--accent)' : 'var(--green)');
+
+    html += `
+      <div class="budget-row">
+        <div class="budget-row-top">
+          <div class="budget-row-name">${CAT_EMOJI[cat]} ${cat}</div>
+          <div class="budget-row-amounts ${over ? 'over' : ''}">${fmt(spent)} / ${fmt(budget)}</div>
+        </div>
+        <div class="budget-bar-wrap">
+          <div class="budget-bar" style="width:${pct}%; background:${color}"></div>
+        </div>
+      </div>
+    `;
+  });
+
+  if (withoutBudget.length > 0) {
+    html += `<div style="margin-top:12px; font-size:12px; color:var(--text3)">Postavi budžet za ostale kategorije:</div>`;
+    withoutBudget.forEach(cat => {
+      html += `
+        <div class="budget-empty-input">
+          <span>${CAT_EMOJI[cat]} ${cat}</span>
+          <input type="number" placeholder="RSD" id="budgetInput_${cat}" />
+          <button class="tx-delete" style="color:var(--accent); font-size:13px;" onclick="setBudget('${cat}')">Postavi</button>
+        </div>
+      `;
+    });
+  }
+
+  listEl.innerHTML = html || `<div class="empty-state"><div class="emoji">🎯</div>Nema definisanih budžeta</div>`;
+}
+
+function setBudget(cat) {
+  const input = document.getElementById('budgetInput_' + cat);
+  const val = parseFloat(input.value);
+  if (!val || val <= 0) { showToast('Upiši ispravan iznos!'); return; }
+  budgets[cat] = val;
+  saveBudgets();
+  render();
+  showToast('Budžet postavljen ✓');
+}
+
 
 function renderFilters(txs) {
   const cats = ['sve', ...new Set(txs.map(t => t.category || 'Ostalo'))];
