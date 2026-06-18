@@ -788,7 +788,10 @@
         <div class="type-btn" id="typeCash" onclick="setType('cash')">💵 Keš</div>
       </div>
       <div class="form-row">
-        <input type="number" id="inAmount" placeholder="Iznos (RSD)" inputmode="decimal" />
+        <div style="display:flex; gap:6px;">
+          <input type="number" id="inAmount" placeholder="Iznos" inputmode="decimal" style="flex:1" />
+          <button type="button" id="inCurrencyBtn" onclick="toggleInCurrency()" style="flex-shrink:0; width:56px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--accent); font-size:13px; font-weight:700; cursor:pointer;">RSD</button>
+        </div>
         <input type="text" id="inMerchant" placeholder="Naziv mesta" />
       </div>
       <div class="form-row">
@@ -876,7 +879,10 @@
       <div class="card-title">Dodaj pretplatu</div>
       <div class="form-row">
         <input type="text" id="subName" placeholder="Naziv (npr. Apple Music)" />
-        <input type="number" id="subAmount" placeholder="Iznos (EUR)" inputmode="decimal" step="0.01" />
+        <div style="display:flex; gap:6px;">
+          <input type="number" id="subAmount" placeholder="Iznos" inputmode="decimal" step="0.01" style="flex:1" />
+          <button type="button" id="subCurrencyBtn" onclick="toggleSubCurrency()" style="flex-shrink:0; width:56px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--accent); font-size:13px; font-weight:700; cursor:pointer;">EUR</button>
+        </div>
       </div>
       <div class="form-row">
         <select id="subCategory">
@@ -1172,6 +1178,8 @@ const PIN_KEY = 'trackerPin_v1';
 let data = [];
 let currentYear, currentMonth;
 let activeType = 'card';
+let inCurrency = 'RSD';
+let subCurrency = 'EUR';
 let activeFilter = 'sve';
 let catChartInstance, dayChartInstance, trendChartInstance;
 let subscriptions = [];
@@ -1268,13 +1276,15 @@ function savePresets() {
 
 function addSubscription() {
   const name = document.getElementById('subName').value.trim();
-  const amountEur = parseFloat(document.getElementById('subAmount').value);
+  const rawAmount = parseFloat(document.getElementById('subAmount').value);
   const category = document.getElementById('subCategory').value;
   const day = parseInt(document.getElementById('subDay').value);
 
   if (!name) { showToast('Upiši naziv!'); return; }
-  if (!amountEur || amountEur <= 0) { showToast('Upiši iznos!'); return; }
+  if (!rawAmount || rawAmount <= 0) { showToast('Upiši iznos!'); return; }
   if (!day || day < 1 || day > 31) { showToast('Upiši dan 1-31!'); return; }
+
+  const amountEur = subCurrency === 'RSD' ? rawAmount / goalSettings.kurs : rawAmount;
 
   subscriptions.push({
     id: Date.now(),
@@ -1573,6 +1583,16 @@ function setType(t) {
   document.getElementById('typeCash').classList.toggle('active', t === 'cash');
 }
 
+function toggleInCurrency() {
+  inCurrency = inCurrency === 'RSD' ? 'EUR' : 'RSD';
+  document.getElementById('inCurrencyBtn').textContent = inCurrency;
+}
+
+function toggleSubCurrency() {
+  subCurrency = subCurrency === 'EUR' ? 'RSD' : 'EUR';
+  document.getElementById('subCurrencyBtn').textContent = subCurrency;
+}
+
 function switchTab(name) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
@@ -1620,14 +1640,16 @@ function applyPreset(index) {
 }
 
 function addTransaction() {
-  const amount   = parseFloat(document.getElementById('inAmount').value);
+  const rawAmount = parseFloat(document.getElementById('inAmount').value);
   const merchant = document.getElementById('inMerchant').value.trim();
   const category = document.getElementById('inCategory').value;
   const date     = document.getElementById('inDate').value;
 
-  if (!amount || amount <= 0) { showToast('Upiši iznos!'); return; }
+  if (!rawAmount || rawAmount <= 0) { showToast('Upiši iznos!'); return; }
   if (!merchant) { showToast('Upiši naziv mesta!'); return; }
   if (!date) { showToast('Izaberi datum!'); return; }
+
+  const amount = inCurrency === 'EUR' ? Math.round(rawAmount * goalSettings.kurs) : rawAmount;
 
   data.push({
     id: Date.now(),
