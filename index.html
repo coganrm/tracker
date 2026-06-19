@@ -8,24 +8,44 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
+  .stat-card, .chart-card, .add-card, .tx-list, .goal-card, .shortcut-box,
+  .deposit-list, .save-cat-card, .tabs, .toast, input, select,
+  .filter-chip, .preset-chip, .type-btn, #pinScreen > div:not(.pin-dots) {
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+  }
+
+  .stat-card, .chart-card, .add-card, .tx-list, .goal-card, .shortcut-box,
+  .deposit-list, .save-cat-card, .tabs {
+    box-shadow: var(--glass-highlight), 0 10px 30px rgba(0,0,0,0.35);
+  }
+
   :root {
-    --bg: #0f0f0f;
-    --surface: #1a1a1a;
-    --surface2: #232323;
-    --border: rgba(255,255,255,0.08);
-    --text: #f0f0f0;
-    --text2: #888;
-    --text3: #555;
+    --bg: #0b0c10;
+    --surface: rgba(255,255,255,0.06);
+    --surface2: rgba(255,255,255,0.09);
+    --border: rgba(255,255,255,0.14);
+    --text: #f5f6f8;
+    --text2: #9a9da3;
+    --text3: #686b71;
     --accent: #e8c547;
-    --accent-dim: rgba(232,197,71,0.12);
-    --red: #e05a5a;
-    --green: #5acea0;
-    --radius: 12px;
-    --radius-sm: 8px;
+    --accent-dim: rgba(232,197,71,0.16);
+    --red: #ff6b6b;
+    --green: #5fe0ae;
+    --radius: 22px;
+    --radius-sm: 14px;
+    --glass-blur: blur(28px) saturate(180%);
+    --glass-highlight: inset 0 1px 0 rgba(255,255,255,0.25), inset 0 0 0 1px rgba(255,255,255,0.04);
   }
 
   body {
     background: var(--bg);
+    background-image:
+      radial-gradient(circle at 12% 8%, rgba(232,197,71,0.20), transparent 38%),
+      radial-gradient(circle at 88% 18%, rgba(95,224,174,0.16), transparent 42%),
+      radial-gradient(circle at 50% 92%, rgba(123,140,222,0.18), transparent 45%);
+    background-attachment: fixed;
+    background-size: cover;
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
     font-size: 15px;
@@ -308,16 +328,17 @@
     background: var(--accent);
     color: #000;
     border: none;
-    border-radius: var(--radius-sm);
+    border-radius: 18px;
     font-size: 15px;
     font-weight: 700;
-    padding: 12px;
+    padding: 13px;
     cursor: pointer;
-    transition: opacity 0.15s;
+    transition: opacity 0.15s, transform 0.1s;
     letter-spacing: 0.2px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 6px 16px rgba(232,197,71,0.2);
   }
 
-  .btn-add:active { opacity: 0.8; }
+  .btn-add:active { opacity: 0.85; transform: scale(0.98); }
 
   .type-toggle {
     display: grid;
@@ -371,7 +392,7 @@
   .tx-icon {
     width: 36px;
     height: 36px;
-    border-radius: 10px;
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -504,22 +525,29 @@
     margin-bottom: -4px;
   }
 
+  .tabs {
+    padding: 4px;
+    gap: 2px;
+  }
+
   .tab {
     padding: 10px 4px;
     text-align: center;
     font-size: 11.5px;
     color: var(--text2);
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all 0.2s ease;
     border: none;
     background: none;
     white-space: nowrap;
+    border-radius: calc(var(--radius) - 6px);
   }
 
   .tab.active {
     background: var(--accent-dim);
     color: var(--accent);
     font-weight: 600;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
   }
 
   .tab-content { display: none; }
@@ -633,7 +661,7 @@
   .sub-icon {
     width: 36px;
     height: 36px;
-    border-radius: 10px;
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -849,7 +877,7 @@
 </head>
 <body>
 
-<div id="loadingOverlay" style="display:none; position:fixed; inset:0; background:#0f0f0f; z-index:999; align-items:center; justify-content:center; flex-direction:column; gap:12px;">
+<div id="loadingOverlay" style="display:none; position:fixed; inset:0; background:rgba(11,12,16,0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); z-index:999; align-items:center; justify-content:center; flex-direction:column; gap:12px;">
   <div style="width:32px; height:32px; border:3px solid #232323; border-top-color:#e8c547; border-radius:50%; animation:spin 0.8s linear infinite;"></div>
   <div style="color:#888; font-size:13px;">Učitavanje podataka...</div>
 </div>
@@ -858,7 +886,7 @@
   @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 
-<div id="pinScreen" style="display:none; position:fixed; inset:0; background:#0f0f0f; z-index:998; align-items:center; justify-content:center; flex-direction:column; gap:16px; padding:20px;">
+<div id="pinScreen" style="display:none; position:fixed; inset:0; background:rgba(11,12,16,0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); z-index:998; align-items:center; justify-content:center; flex-direction:column; gap:16px; padding:20px;">
   <div style="font-size:40px;">🔒</div>
   <div id="pinTitle" style="color:#f0f0f0; font-size:16px; font-weight:600;">Unesi PIN</div>
   <div style="position:relative;">
@@ -866,7 +894,7 @@
     <input type="password" id="pinInput" inputmode="numeric" maxlength="6" autofocus autocomplete="off" class="pin-hidden-input" onkeydown="if(event.key==='Enter') submitPin()" oninput="onPinInput(this)" />
   </div>
   <div id="pinError" style="color:#e05a5a; font-size:13px; height:16px;"></div>
-  <button onclick="submitPin()" style="background:#e8c547; color:#000; border:none; border-radius:8px; font-size:15px; font-weight:700; padding:12px 32px; cursor:pointer;">Potvrdi</button>
+  <button onclick="submitPin()" style="background:#e8c547; color:#000; border:none; border-radius:24px; font-size:15px; font-weight:700; padding:13px 36px; cursor:pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 8px 20px rgba(232,197,71,0.25);">Potvrdi</button>
 </div>
 
 <header id="appHeader" style="display:none">
