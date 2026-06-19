@@ -956,7 +956,10 @@
           <input type="number" id="inAmount" placeholder="Iznos" inputmode="decimal" style="flex:1" />
           <button type="button" id="inCurrencyBtn" onclick="toggleInCurrency()" style="flex-shrink:0; width:56px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--accent); font-size:13px; font-weight:700; cursor:pointer;">RSD</button>
         </div>
-        <input type="text" id="inMerchant" placeholder="Naziv mesta" />
+        <input type="text" id="inMerchant" placeholder="Naziv mesta (opciono)" />
+      </div>
+      <div class="form-row">
+        <input type="text" id="inNote" placeholder="Šta si kupio? (opciono)" />
       </div>
       <div class="form-row">
         <select id="inCategory">
@@ -1981,11 +1984,11 @@ function applyPreset(index) {
 function addTransaction() {
   const rawAmount = parseFloat(document.getElementById('inAmount').value);
   const merchant = document.getElementById('inMerchant').value.trim();
+  const note = document.getElementById('inNote').value.trim();
   const category = document.getElementById('inCategory').value;
   const date     = document.getElementById('inDate').value;
 
   if (!rawAmount || rawAmount <= 0) { showToast('Upiši iznos!'); return; }
-  if (!merchant) { showToast('Upiši naziv mesta!'); return; }
   if (!date) { showToast('Izaberi datum!'); return; }
 
   const amount = inCurrency === 'EUR' ? Math.round(rawAmount * goalSettings.kurs) : rawAmount;
@@ -1994,6 +1997,7 @@ function addTransaction() {
     id: Date.now(),
     amount,
     merchant,
+    note,
     category,
     date,
     type: activeType
@@ -2003,6 +2007,7 @@ function addTransaction() {
 
   document.getElementById('inAmount').value = '';
   document.getElementById('inMerchant').value = '';
+  document.getElementById('inNote').value = '';
   document.getElementById('inCategory').value = '';
   setTodayDate();
 
@@ -2360,11 +2365,14 @@ function renderTxList(txs) {
     const emoji = CAT_EMOJI[cat] || '❓';
     const d = new Date(t.date);
     const dateStr = d.getDate() + '. ' + MONTHS_SR[d.getMonth()].slice(0,3);
+    const title = t.merchant || t.note || (cat ? (CAT_EMOJI[cat] + ' ' + cat) : 'Trošak');
+    const noteHtml = (t.note && t.merchant) ? `<div style="font-size:12px; color:var(--text2); margin-top:1px;">${t.note}</div>` : '';
     return `
       <div class="tx-item">
         <div class="tx-icon" style="background:${color}22; color:${color}; font-size:17px">${emoji}</div>
         <div class="tx-info">
-          <div class="tx-merchant">${t.merchant}</div>
+          <div class="tx-merchant">${title}</div>
+          ${noteHtml}
           <div class="tx-meta">
             <span>${dateStr}</span>
             <span>·</span>
