@@ -468,7 +468,7 @@
 
   .tabs {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -858,7 +858,6 @@
     <button class="tab" onclick="switchTab('transakcije')">Transakcije</button>
     <button class="tab" onclick="switchTab('pretplate')">Pretplate</button>
     <button class="tab" onclick="switchTab('stednja')">Štednja</button>
-    <button class="tab" onclick="switchTab('ciljevi')">Ciljevi</button>
     <button class="tab" onclick="switchTab('shortcut')">Shortcut</button>
   </div>
 
@@ -1003,9 +1002,7 @@
       <div class="card-title">Istorija uplata</div>
       <div class="deposit-list" id="depositList"></div>
     </div>
-  </div>
 
-  <div id="tab-ciljevi" class="tab-content">
     <div class="save-cat-card">
       <div class="card-title">Ciljana štednja po kategoriji</div>
       <div id="savingsCatList"></div>
@@ -1877,7 +1874,7 @@ function switchTabProgrammatic(name) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
-  const tabIndex = { pregled: 0, transakcije: 1, pretplate: 2, stednja: 3, ciljevi: 4, shortcut: 5 };
+  const tabIndex = { pregled: 0, transakcije: 1, pretplate: 2, stednja: 3, shortcut: 4 };
   const tabs = document.querySelectorAll('.tab');
   if (tabs[tabIndex[name]]) tabs[tabIndex[name]].classList.add('active');
 }
@@ -1910,8 +1907,7 @@ function switchTab(name) {
   document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   event.target.classList.add('active');
-  if (name === 'stednja') renderGoal();
-  if (name === 'ciljevi') renderSavings();
+  if (name === 'stednja') { renderGoal(); renderSavings(); }
   if (name === 'pretplate') renderSubscriptions();
 }
 
