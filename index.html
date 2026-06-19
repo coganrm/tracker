@@ -935,6 +935,8 @@
           <option value="">Kategorija...</option>
           <option value="Gorivo">⛽ Gorivo</option>
           <option value="Izlasci">☕ Izlasci</option>
+          <option value="Prodavnica">🛒 Prodavnica</option>
+          <option value="Kredit">🏦 Kredit</option>
           <option value="Ostalo">📦 Ostalo</option>
         </select>
         <input type="date" id="inDate" />
@@ -1056,11 +1058,10 @@
       <div class="form-row">
         <select id="subCategory">
           <option value="">Kategorija...</option>
-          <option value="Hrana">🥗 Hrana</option>
-          <option value="Apple">🍎 Apple pretplate</option>
-          <option value="Kredit">🏦 Kredit</option>
           <option value="Parking">🅿️ Parking</option>
-          <option value="Auto">🚗 Auto (reg/osig)</option>
+          <option value="AppleMusic">🎵 Apple Music</option>
+          <option value="iCloud">☁️ iCloud+</option>
+          <option value="PlayStation">🎮 PlayStation+</option>
           <option value="Ostalo">📦 Ostalo</option>
         </select>
         <input type="number" id="subDay" placeholder="Dan u mesecu (1-31)" min="1" max="31" />
@@ -1123,20 +1124,21 @@ const STORAGE_KEY = 'troskoviData_v2';
 const MONTHS_SR = ['Januar','Februar','Mart','April','Maj','Jun','Jul','Avgust','Septembar','Oktobar','Novembar','Decembar'];
 
 const CAT_COLORS = {
-  'Gorivo':     '#e8c547',
-  'Izlasci':    '#e07a5a',
-  'Hrana':      '#5acea0',
-  'Apple':      '#a8a8a8',
-  'Kredit':     '#e05a5a',
-  'Parking':    '#5ab4ce',
-  'Auto':       '#b07fe0',
-  'Ostalo':     '#888888',
-  '':           '#555555',
+  'Gorivo':      '#e8c547',
+  'Izlasci':     '#e07a5a',
+  'Prodavnica':  '#7b8cde',
+  'Kredit':      '#e05a5a',
+  'Parking':     '#5ab4ce',
+  'AppleMusic':  '#a8a8a8',
+  'iCloud':      '#6fb3e0',
+  'PlayStation': '#5a6fe0',
+  'Ostalo':      '#888888',
+  '':            '#555555',
 };
 
 const CAT_EMOJI = {
-  'Gorivo':'⛽','Izlasci':'☕','Hrana':'🥗',
-  'Apple':'🍎','Kredit':'🏦','Parking':'🅿️','Auto':'🚗','Ostalo':'📦','':'❓'
+  'Gorivo':'⛽','Izlasci':'☕','Prodavnica':'🛒','Kredit':'🏦','Parking':'🅿️',
+  'AppleMusic':'🎵','iCloud':'☁️','PlayStation':'🎮','Ostalo':'📦','':'❓'
 };
 
 const GOAL_KEY = 'goalSettings_v1';
